@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
+import pytorch_lightning as L
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,29 +32,28 @@ class SimpleCLSdata(Dataset):
 
 
 def get_num_rows(npy_file):
-    data = np.load(npy_file, mmap_mode='r')  # Load the file with memory-mapping in read mode
-    num_rows = data.shape[0]  # Access the shape to get the number of rows
-    del data  # This line attempts to ensure that any resources are freed, though actual cleanup is dependent on Python's garbage collection
+    data = np.load(npy_file, mmap_mode='r')  #Load the file with memory-mapping in read mode
+    num_rows = data.shape[0]  #Gets number of rows
+    del data  #Deleting data to free up memory
     return num_rows
 
 class CLSdata(Dataset):
     def __init__(self, csv_file, npy_dir,vocal=False):
         super().__init__()
         self.df = pd.read_csv(csv_file)
-        self.labels = torch.tensor(self.df['troll'].values, dtype=torch.long) # Convert labels to tensor
+        self.labels = torch.tensor(self.df['troll'].values, dtype=torch.long)
         self.df.drop(columns=["Unnamed: 0", "content"], inplace=True)
         # Efficiently load and process numpy files
         self.npy_files = list(Path(npy_dir).glob("*.npy"))
         self.npy_sizes = [get_num_rows(file) for file in self.npy_files]
         # npylist = [np.load(os.path.join(npy_dir, file)) for file in self.npy_files]
-        # self.data = torch.tensor(np.concatenate(npylist, axis=0), dtype=torch.float32).squeeze(1) # Load, concatenate, and convert to tensor
-        self.curr = None
+        # self.data = torch.tensor(np.concatenate(npylist, axis=0), dtype=torch.float32).squeeze(1)
         self.curridx = -1
         self.vocal = vocal
         # print(f'Number of npy files: {len(self.npy_files)}', flush=True)
         # print(len(self.npy_sizes))
     def __len__(self):
-        return len(self.df)
+        return len(self.df) - 2
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
@@ -67,13 +67,12 @@ class CLSdata(Dataset):
         
         if filereq != self.curridx:
             self.curridx = filereq
-            print(filereq)
             self.curr = np.load(self.npy_files[filereq])
         
         localidx = idx - cumulative_sizes[filereq]
         
-        embed = torch.tensor(self.curr[localidx], dtype=torch.float32)  # Convert to tensor
-        label = self.labels[idx]  # Use preloaded tensor labels
+        embed = torch.tensor(self.curr[localidx], dtype=torch.float32)
+        label = self.labels[idx]
         return embed, label
 
 # Usage
