@@ -48,12 +48,13 @@ class CLSdata(Dataset):
         self.npy_sizes = [get_num_rows(file) for file in self.npy_files]
         # npylist = [np.load(os.path.join(npy_dir, file)) for file in self.npy_files]
         # self.data = torch.tensor(np.concatenate(npylist, axis=0), dtype=torch.float32).squeeze(1)
+        
         self.curridx = -1
         self.vocal = vocal
         # print(f'Number of npy files: {len(self.npy_files)}', flush=True)
         # print(len(self.npy_sizes))
     def __len__(self):
-        return len(self.df) - 2
+        return len(self.df) - 3
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
