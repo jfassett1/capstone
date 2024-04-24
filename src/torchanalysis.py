@@ -8,29 +8,38 @@ from torch.optim import Adam,SGD
 import pathlib
 
 
+
+def binary_accuracy(logits, labels, threshold=0.5):
+    probs = torch.sigmoid(logits)
+    preds = (probs >= threshold).float()
+    correct = (preds == labels).float()
+    accuracy = correct.mean()
+    return accuracy
+
 class Model1(pl.LightningModule):
     def __init__(self):
         super().__init__()
-        self.layer1 = nn.Linear(768, 512)
-        self.layer2 = nn.Linear(512, 350)
-        self.layer3 = nn.Linear(350, 300)
-        self.layer4 = nn.Linear(300, 250)
-        self.layer5 = nn.Linear(250, 100)
-        self.layer6 = nn.Linear(100, 2)
-
+        self.layer1 = nn.Linear(768, 1052)
+        # self.layer2 = nn.Linear(1052, 2000)
+        # self.layer3 = nn.Linear(2000, 2000)
+        # self.layer4 = nn.Linear(2000, 1000)
+        self.layer5 = nn.Linear(1052, 100)
+        self.layer6 = nn.Linear(100, 1)
+        self.loss_fn = nn.BCEWithLogitsLoss()
     def forward(self, x):
         x = F.relu(self.layer1(x))
-        x = F.relu(self.layer2(x))
-        x = F.relu(self.layer3(x))
-        x = F.relu(self.layer4(x))
+        # x = F.relu(self.layer2(x))
+        # x = F.relu(self.layer3(x))
+        # x = F.relu(self.layer4(x))
         x = F.relu(self.layer5(x))
         return self.layer6(x)
 
     def training_step(self, batch, batch_idx):
         # Assuming batch consists of features and labels
         x, y = batch
+        y = y.float()
         logits = self(x)
-        loss = F.cross_entropy(logits, y)
+        loss = self.loss_fn(logits.squeeze(), y)
         # self.log('train_loss', loss,on_epoch=True,on_step=True,prog_bar=True)    
         if (batch_idx + 1) % 150 == 0:
             self.log('train_loss', loss, on_step=True, on_epoch=False, prog_bar=True, logger=True)
@@ -38,15 +47,17 @@ class Model1(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        optimizer = SGD(self.parameters(), lr=1e-3)
+        optimizer = Adam(self.parameters(), lr=1e-5)
         return optimizer
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
+        y = y.float()
         logits = self(x)
-        loss = F.cross_entropy(logits, y)
+        loss = self.loss_fn(logits.squeeze(1), y)
+        # acc = binary_accuracy(logits, y)
         self.log('val_loss', loss,prog_bar=True)
-        self.log('Val Accuracy')
+        # self.log('val_acc',acc,prog_bar=True)
     
 data_dir = pathlib.Path(__file__).parent.parent/"data"
 
@@ -59,7 +70,7 @@ data_module = TweetDataModule(data_dir/"dataset")
 # Set up the trainer with desired configurations
 trainer = pl.Trainer(max_epochs=10, 
                      devices=1,
-                     val_check_interval=0.25)
+                     val_check_interval=0.2)
 
 # Train the model
 trainer.fit(model, data_module)
