@@ -46,6 +46,7 @@ class Model1(pl.LightningModule):
         logits = self(x)
         loss = F.cross_entropy(logits, y)
         self.log('val_loss', loss,prog_bar=True)
+        self.log('Val Accuracy')
     
 data_dir = pathlib.Path(__file__).parent.parent/"data"
 
