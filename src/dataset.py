@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
     dm = TweetDataModule(data_dir/"dataset")
 
-    for i in tqdm(dm.val_dataloader(),colour="blue"):
+    for i in tqdm(dm.train_dataloader(),colour="blue"):
         pass
     # print(type(dataset[5][0].numpy()))
     # exit()
