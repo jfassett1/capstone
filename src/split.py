@@ -11,11 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 if __name__ == "__main__":
-    csv_file = 'data/transformed/data.csv'
-    npy_dir = 'data/embedded/'
-    data_dir = pathlib.Path(__file__).parent.parent / "data"
+    csv_file = 'transformed/data.csv'
+    npy_dir = 'embedded/'
+    data_dir = pathlib.Path(__file__).parent.parent/"data"
 
-    dataset = CLSdata2(csv_file=csv_file, npy_dir=npy_dir)
+    dataset = CLSdata2(csv_file=data_dir/csv_file, npy_dir=data_dir/ npy_dir)
     # print(type(dataset[5][0].numpy()))
     # exit()
     labels = np.array(dataset.labels[:-3])
@@ -38,26 +38,26 @@ if __name__ == "__main__":
     )
 
     def save2np(X,y,batches=30,which='val'):
-        directory = data_dir / which
+        directory = data_dir/"dataset"/which
+        print(directory)
         if not directory.exists():
             directory.mkdir()
-        np.save(data_dir/which/"labels.npy",y)
+        np.save(directory/"labels.npy",y)
         batch_size = int(np.ceil(len(y) / batches))
         batch_num = 0
         batch_list = []
         for i, val in enumerate(tqdm(X, colour="red", ncols=300, bar_format='{l_bar}{bar:10}{r_bar}')):
             batch_list.append(dataset[int(val)][0].numpy())
             if (i + 1) % batch_size == 0 or i == len(X) - 1:
-                np.save(data_dir/which/f"embedded_data{batch_num}.npy",np.vstack(batch_list))
+                np.save(data_dir/"dataset"/which/f"embedded_data{batch_num}.npy",np.vstack(batch_list))
                 batch_list = []
                 # print(rf"Batch {batch_num} complete.",end='',flush=True)
                 batch_num += 1
                 tqdm.write(str(f"Batch Number: {batch_num}"))
 
             
-
 save2np(X_val_res,y_val_res,which="val")
-# save2np(X_test,y_test,which="test")
-# save2np(X_train_res,y_train_res,which="train")
+save2np(X_test,y_test,which="test")
+save2np(X_train_res,y_train_res,which="train")
 
     # print(y_train_res.sum()/len(y_train_res))
