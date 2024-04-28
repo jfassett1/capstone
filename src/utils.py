@@ -7,7 +7,7 @@ import pytorch_lightning as L
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
+import re
 from pathlib import Path
 from collections import deque
 
@@ -69,18 +69,24 @@ class CLSdata(Dataset):
         # Calculate the cumulative size to find the correct .npy file and local index
         cumulative_sizes = np.cumsum([0] + self.npy_sizes)
         filereq = np.searchsorted(cumulative_sizes, idx+1, side='right') - 1
+
         if filereq != self.curridx:
-            print("switch")
             self.curridx = filereq
             self.curr = np.load(self.npy_files[filereq])
         
         localidx = idx - cumulative_sizes[filereq]
-        
+        print(filereq)
         embed = torch.tensor(self.curr[localidx], dtype=torch.float32)
         label = self.labels[idx]
         return embed, label
 
 
+def numerical_sort(file):
+    """ Extracts numbers from filename and returns them as an integer for sorting purposes. """
+    numbers = re.compile(r'(\d+)')
+    parts = numbers.split(file.name)
+    parts[1::2] = map(int, parts[1::2])  # Convert the extracted numbers to integers
+    return parts
 
 class CLSdata2(Dataset):
     def __init__(self, csv_file, npy_dir, vocal=False, cache_size=5):
@@ -89,7 +95,7 @@ class CLSdata2(Dataset):
         self.labels = torch.tensor(self.df['troll'].values, dtype=torch.long)
         self.df.drop(columns=["Unnamed: 0", "content"], inplace=True)
         
-        self.npy_files = sorted(Path(npy_dir).glob("*.npy"))
+        self.npy_files = sorted(Path(npy_dir).glob("*.npy"),key=numerical_sort)
         self.npy_sizes = [np.load(file, mmap_mode='r').shape[0] for file in self.npy_files]
         self.cumulative_sizes = np.cumsum([0] + self.npy_sizes)
         
@@ -99,7 +105,7 @@ class CLSdata2(Dataset):
         self.cache_keys = deque()
 
     def __len__(self):
-        return len(self.labels) - 3
+        return len(self.labels) - 1
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
@@ -112,9 +118,12 @@ class CLSdata2(Dataset):
             if len(self.cache_keys) >= self.cache_size:
                 old_key = self.cache_keys.popleft()
                 del self.file_cache[old_key]
+            # if file_idx == len(self.npy_files):
+            #     print("2 high")
+            #     file_idx = len(self.npy_files) - 1
+                
             self.file_cache[file_idx] = np.load(self.npy_files[file_idx], mmap_mode='r')
             self.cache_keys.append(file_idx)
-        
         local_idx = idx - self.cumulative_sizes[file_idx]
         embed = torch.from_numpy(self.file_cache[file_idx][local_idx]).float()
         label = self.labels[idx]

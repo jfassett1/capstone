@@ -69,7 +69,7 @@ data_module = TweetDataModule(data_dir/"dataset")
 
 # Set up the trainer with desired configurations
 trainer = pl.Trainer(max_epochs=10, 
-                     devices=1,
+                     devices=2,
                      val_check_interval=0.2)
 
 # Train the model
