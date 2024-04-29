@@ -50,7 +50,7 @@ class TweetDataset(Dataset):
     
 
 class TweetDataModule(pl.LightningDataModule):
-    def __init__(self, dataset_dir, batch_size=64, vocal=False, cache_size=5):
+    def __init__(self, dataset_dir, batch_size=6000, vocal=False, cache_size=5):
         super().__init__()
         self.dataset_dir = dataset_dir
         self.batch_size = batch_size
@@ -70,8 +70,7 @@ class TweetDataModule(pl.LightningDataModule):
         return DataLoader(self.val_dataset, batch_size=self.batch_size)
 
     def test_dataloader(self):
-        # Implement this if you have test data
-        pass
+        return DataLoader(self.test_dataset, batch_size=self.batch_size)
 if __name__ == "__main__":
     # csv_file = 'transformed/data.csv'
     # npy_dir = 'embedded/'
@@ -80,10 +79,10 @@ if __name__ == "__main__":
     npy_dir = data_dir/"dataset"/which
 
 
-    dm = TweetDataModule(data_dir/"dataset")
+    dm = TweetDataModule(data_dir/"dataset",batch_size=1)
 
-    for i in tqdm(dm.train_dataloader(),colour="blue"):
-        pass
+    # for i,j in dm.train_dataloader():
+    #     print(i.shape,type(j[0][0]))
     # print(type(dataset[5][0].numpy()))
     # exit()
 

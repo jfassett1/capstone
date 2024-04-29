@@ -18,14 +18,15 @@ if __name__ == "__main__":
     dataset = CLSdata2(csv_file=csv_file, npy_dir=npy_dir)
     # print(type(dataset[5][0].numpy()))
     # exit()
-    labels = np.array(dataset.labels[:-3])
+    labels = np.array(dataset.labels)
     indices = np.arange(len(labels))
     # Assuming X is your features and y is the labels
     X_train, X_test, y_train, y_test = train_test_split(
         indices.reshape(-1,1),  # Reshaping indices to fit expected shape
         labels,                # The labels
-        test_size=0.1,         # 30% of the data for testing
-        random_state=42        # For reproducibility
+        test_size=0.25,         # 30% of the data for testing
+        random_state=42,        # For reproducibility
+        shuffle=True
     )
 
     # print(labels)
@@ -38,9 +39,6 @@ if __name__ == "__main__":
     )
 
 
-    # for i in tqdm(dataset):
-    #     pass
-    # exit()
     def save2np(X,y,batches=30,which='val'):
         directory = data_dir/"dataset"/which
         print(directory)
@@ -50,19 +48,23 @@ if __name__ == "__main__":
         batch_size = int(np.ceil(len(y) / batches))
         batch_num = 0
         batch_list = []
-        for i, val in enumerate(tqdm(X, colour="red", ncols=300, bar_format='{l_bar}{bar:10}{r_bar}')):
+        pbar = tqdm(X, colour="red", ncols=300, bar_format='{l_bar}{bar:10}{r_bar}')
+        for i, val in enumerate(pbar):
             # print(dataset[int(val)][0].numpy())
-            batch_list.append(dataset[int(val)][0].numpy())
+            try:
+                batch_list.append(dataset[int(val)][0].numpy())
+            except:
+                print(int(val))
             if (i + 1) % batch_size == 0 or i == len(X) - 1:
-                np.save(directory/which/f"embedded_data{batch_num}.npy",np.vstack(batch_list))
+                np.save(directory/f"embedded_data{batch_num}.npy",np.vstack(batch_list))
                 batch_list = []
                 # print(rf"Batch {batch_num} complete.",end='',flush=True)
                 batch_num += 1
-                tqdm.write(str(f"Batch Number: {batch_num}"))
+                pbar.set_description(str(f"Batch Number: {batch_num}"))
 
             
-save2np(X_val_res,y_val_res,batches=10,which="val")
-save2np(X_test,y_test,batches=10,which="test")
-save2np(X_train_res,y_train_res,which="train")
+    save2np(X_val_res,y_val_res,batches=10,which="val")
+    save2np(X_test,y_test,batches=10,which="test")
+    save2np(X_train_res,y_train_res,which="train")
 
     # print(y_train_res.sum()/len(y_train_res))

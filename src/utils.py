@@ -10,26 +10,11 @@ logger = logging.getLogger(__name__)
 import re
 from pathlib import Path
 from collections import deque
-
+import pathlib
 # def get_num_rows(npy_file):
 #     with np.load(npy_file, mmap_mode='r') as data:
 #         num_rows = data.shape[0]
 #     return num_rows
-
-class SimpleCLSdata(Dataset):
-    def __init__(self, npy_dir):
-        super().__init__()
-        npy_file = list(Path(npy_dir).glob("*.npy"))[0]  # Just take the first npy file for testing
-        data = np.load(npy_file, mmap_mode='r')  # Attempt to load it
-        print(data.shape)  # Print shape to confirm it's loaded correctly
-
-    def __len__(self):
-        return 1  # Return a dummy length
-
-    def __getitem__(self, idx):
-        return torch.tensor([1.0])  # Return a dummy item
-
-
 
 
 def get_num_rows(npy_file):
@@ -39,26 +24,30 @@ def get_num_rows(npy_file):
     return num_rows
 
 
-
-
 class CLSdata(Dataset):
     def __init__(self, csv_file, npy_dir,vocal=False):
         super().__init__()
         self.df = pd.read_csv(csv_file)
         self.labels = torch.tensor(self.df['troll'].values, dtype=torch.long)
-        self.df.drop(columns=["Unnamed: 0", "content"], inplace=True)
+        #Deleting unneeded columns
+        cols = set(self.df.columns)
+        metadata = set(['followers','retweet','hash','link','capitals','numerics','special_chars','exclamations','avg_word_length','sentences'])
+        unneeded = cols - metadata
+        self.df.drop(columns=unneeded,inplace=True)
+
+        # self.df.drop(columns=["Unnamed: 0", "content"], inplace=True)
         # Efficiently load and process numpy files
         self.npy_files = list(Path(npy_dir).glob("*.npy"))
         self.npy_sizes = [get_num_rows(file) for file in self.npy_files]
         # npylist = [np.load(os.path.join(npy_dir, file)) for file in self.npy_files]
         # self.data = torch.tensor(np.concatenate(npylist, axis=0), dtype=torch.float32).squeeze(1)
-        
+        print(self.npy_sizes)
         self.curridx = -1
         self.vocal = vocal
         # print(f'Number of npy files: {len(self.npy_files)}', flush=True)
         # print(len(self.npy_sizes))
     def __len__(self):
-        return len(self.df) - 3
+        return len(self.npy_files) * self.npy_sizes
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
@@ -91,21 +80,22 @@ def numerical_sort(file):
 class CLSdata2(Dataset):
     def __init__(self, csv_file, npy_dir, vocal=False, cache_size=5):
         super().__init__()
-        self.df = pd.read_csv(csv_file)
-        self.labels = torch.tensor(self.df['troll'].values, dtype=torch.long)
-        self.df.drop(columns=["Unnamed: 0", "content"], inplace=True)
-        
+
         self.npy_files = sorted(Path(npy_dir).glob("*.npy"),key=numerical_sort)
         self.npy_sizes = [np.load(file, mmap_mode='r').shape[0] for file in self.npy_files]
+        self.length = sum(self.npy_sizes) -1
         self.cumulative_sizes = np.cumsum([0] + self.npy_sizes)
-        
         self.vocal = vocal
         self.cache_size = cache_size
         self.file_cache = {}
         self.cache_keys = deque()
 
+        self.df = pd.read_csv(csv_file).iloc[:self.length]
+        self.labels = torch.tensor(self.df['troll'].values, dtype=torch.long)
+        self.df.drop(columns=["Unnamed: 0", "content"], inplace=True)
+
     def __len__(self):
-        return len(self.labels) - 1
+        return self.length
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
@@ -130,34 +120,10 @@ class CLSdata2(Dataset):
         
         return embed, label
     
+if __name__ == "__main__":  
+    data_dir = pathlib.Path(__file__).parent.parent / "data"
+    # Usage
+    # csv_file = pathlib.Path()
+    npy_dir = 'src/embedded/'
 
-# Usage
-# csv_file = 'src/transformed/data.csv'
-# npy_dir = 'src/embedded/'
-
-# my_dataset = MyDataset(csv_file=csv_file, npy_dir=npy_dir)
-# dataloader = DataLoader(my_dataset, batch_size=4, shuffle=True)
-
-
-# def dataloader():
-#     # Initialize an empty array for more efficient concatenation
-#     cols_list = []
-    
-#     for file in os.listdir("src/embedded/"):
-#         if file.endswith(".npy"):
-#             filepath = os.path.join("src/embedded/", file)
-#             # Load each file and append to list without concatenating immediately
-#             cols_list.append(np.load(filepath))
-    
-#     # Concatenate all arrays at once, more memory efficient than appending in a loop
-#     cols = np.concatenate(cols_list, axis=0)
-#     cols = np.squeeze(cols, axis=1)
-    
-#     # Efficient loading of csv
-#     df = pd.read_csv("src/transformed/data.csv", usecols=lambda column: column not in ["Unnamed: 0"])
-    
-#     # Create DataFrame from Numpy Array
-#     bertdf = pd.DataFrame(cols)
-    
-#     # Concatenate DataFrames
-#     ml_df = pd.concat([df, bertdf], axis=1)
+    my_dataset = CLSdata2(csv_file=csv_file, npy_dir=npy_dir)

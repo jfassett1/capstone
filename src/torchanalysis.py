@@ -19,18 +19,18 @@ def binary_accuracy(logits, labels, threshold=0.5):
 class Model1(pl.LightningModule):
     def __init__(self):
         super().__init__()
-        self.layer1 = nn.Linear(768, 1052)
-        # self.layer2 = nn.Linear(1052, 2000)
-        # self.layer3 = nn.Linear(2000, 2000)
-        # self.layer4 = nn.Linear(2000, 1000)
+        self.layer1 = nn.Linear(778, 1052)
+        self.layer2 = nn.Linear(1052, 2000)
+        self.layer3 = nn.Linear(2000, 2000)
+        self.layer4 = nn.Linear(2000, 1052)
         self.layer5 = nn.Linear(1052, 100)
         self.layer6 = nn.Linear(100, 1)
         self.loss_fn = nn.BCEWithLogitsLoss()
     def forward(self, x):
         x = F.relu(self.layer1(x))
-        # x = F.relu(self.layer2(x))
-        # x = F.relu(self.layer3(x))
-        # x = F.relu(self.layer4(x))
+        x = F.relu(self.layer2(x))
+        x = F.relu(self.layer3(x))
+        x = F.relu(self.layer4(x))
         x = F.relu(self.layer5(x))
         return self.layer6(x)
 
@@ -40,14 +40,14 @@ class Model1(pl.LightningModule):
         y = y.float()
         logits = self(x)
         loss = self.loss_fn(logits.squeeze(), y)
-        # self.log('train_loss', loss,on_epoch=True,on_step=True,prog_bar=True)    
-        if (batch_idx + 1) % 150 == 0:
-            self.log('train_loss', loss, on_step=True, on_epoch=False, prog_bar=True, logger=True)
+        self.log('train_loss', loss,on_epoch=True,on_step=True,prog_bar=True)    
+        # if (batch_idx + 1) % 150 == 0:
+        #     self.log('train_loss', loss, on_step=True, on_epoch=False, prog_bar=True, logger=True)
 
         return loss
 
     def configure_optimizers(self):
-        optimizer = Adam(self.parameters(), lr=1e-5)
+        optimizer = SGD(self.parameters(), lr=1e-5)
         return optimizer
 
     def validation_step(self, batch, batch_idx):
@@ -61,19 +61,10 @@ class Model1(pl.LightningModule):
     
 data_dir = pathlib.Path(__file__).parent.parent/"data"
 
-# Instantiate the model
 model = Model1()
+data_module = TweetDataModule(data_dir/"dataset",batch_size=6000)
 
-# Instantiate the data module
-data_module = TweetDataModule(data_dir/"dataset")
-
-# Set up the trainer with desired configurations
 trainer = pl.Trainer(max_epochs=10, 
                      devices=2,
                      val_check_interval=0.2)
-
-# Train the model
 trainer.fit(model, data_module)
-
-# Optionally, run test data through the trained model
-trainer.test(model, data_module.test_dataloader())
