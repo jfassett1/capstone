@@ -25,7 +25,7 @@ class TweetDataset(Dataset):
         self.cache_keys = deque()
 
     def __len__(self):
-        return len(self.labels) - 3
+        return len(self.labels) -1
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
@@ -78,8 +78,20 @@ if __name__ == "__main__":
     data_dir = Path(__file__).parent.parent/"data"
     npy_dir = data_dir/"dataset"/which
 
+    ds = TweetDataset(npy_dir)
 
-    dm = TweetDataModule(data_dir/"dataset",batch_size=1)
+    embeds = []
+    labels_list = []
+    for i in tqdm(range(len(ds)), colour="blue"):
+        embed,label = ds.__getitem__(i)
+        embeds.append(embed)
+        labels_list.append(label)
+
+    # Convert lists to tensors
+    embeds_tensor = torch.stack(embeds)
+    labels_tensor = torch.stack(labels_list)
+    # dm = TweetDataModule(data_dir/"dataset",batch_size=1)
+    # print(dm.train_dataloader())
 
     # for i,j in dm.train_dataloader():
     #     print(i.shape,type(j[0][0]))
